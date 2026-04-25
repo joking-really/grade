@@ -1,0 +1,114 @@
+{
+  "entities": {
+    "Teacher": {
+      "title": "Teacher",
+      "description": "Teacher profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "school": { "type": "string" }
+      },
+      "required": ["uid", "name", "email"]
+    },
+    "Class": {
+      "title": "Class",
+      "description": "A student group or cohort",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string" },
+        "name": { "type": "string" },
+        "section": { "type": "string" },
+        "term": { "type": "string" },
+        "subject": { "type": "string" },
+        "studentCount": { "type": "number" },
+        "avgGrade": { "type": "string" }
+      },
+      "required": ["teacherId", "name", "section", "term"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Student in a class",
+      "type": "object",
+      "properties": {
+        "classId": { "type": "string" },
+        "name": { "type": "string" },
+        "rollNumber": { "type": "string" }
+      },
+      "required": ["classId", "name", "rollNumber"]
+    },
+    "Rubric": {
+      "title": "Rubric",
+      "description": "Grading criteria and point values",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string" },
+        "name": { "type": "string" },
+        "criteria": { "type": "array" },
+        "gradeScale": { "type": "string" }
+      },
+      "required": ["teacherId", "name", "criteria"]
+    },
+    "Evaluation": {
+      "title": "Evaluation",
+      "description": "An assignment or exam being graded",
+      "type": "object",
+      "properties": {
+        "teacherId": { "type": "string" },
+        "classId": { "type": "string" },
+        "rubricId": { "type": "string" },
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "term": { "type": "string" },
+        "status": { "type": "string", "enum": ["Needs Review", "Processing", "Completed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "stats": { "type": "object" }
+      },
+      "required": ["teacherId", "classId", "name", "status"]
+    },
+    "Submission": {
+      "title": "Submission",
+      "description": "Individual student work within an evaluation",
+      "type": "object",
+      "properties": {
+        "evaluationId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "studentName": { "type": "string" },
+        "rollNumber": { "type": "string" },
+        "scores": { "type": "object" },
+        "totalScore": { "type": "number" },
+        "maxScore": { "type": "number" },
+        "feedback": { "type": "string" },
+        "status": { "type": "string", "enum": ["Graded", "Analyzing", "Pending"] }
+      },
+      "required": ["evaluationId", "studentId", "status"]
+    }
+  },
+  "firestore": {
+    "teachers/{teacherId}": {
+      "schema": "Teacher",
+      "description": "Teacher profiles"
+    },
+    "classes/{classId}": {
+      "schema": "Class",
+      "description": "Classes created by teachers"
+    },
+    "classes/{classId}/students/{studentId}": {
+      "schema": "Student",
+      "description": "Students within a class"
+    },
+    "rubrics/{rubricId}": {
+      "schema": "Rubric",
+      "description": "Grading rubrics"
+    },
+    "evaluations/{evaluationId}": {
+      "schema": "Evaluation",
+      "description": "Assignment batches"
+    },
+    "evaluations/{evaluationId}/submissions/{submissionId}": {
+      "schema": "Submission",
+      "description": "Individual results"
+    }
+  }
+}

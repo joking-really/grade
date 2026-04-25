@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helpers
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn() && request.auth.token.email_verified == true; }
+    function isOwner(data) { return isSignedIn() && data.teacherId == request.auth.uid; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // Teachers
+    match /teachers/{teacherId} {
+      allow get: if isVerified() && teacherId == request.auth.uid;
+      allow create: if isVerified() && teacherId == request.auth.uid && 
+        incoming().keys().hasAll(['uid', 'email', 'name']) &&
+        incoming().uid == request.auth.uid;
+      allow update: if isVerified() && teacherId == request.auth.uid &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'school']);
+    }
+
+    // Classes
+    match /classes/{classId} {
+      allow get: if isVerified() && isOwner(existing());
+      allow list: if isVerified() && resource.data.teacherId == request.auth.uid;
+      allow create: if isVerified() && isOwner(incoming()) &&
+        incoming().keys().hasAll(['teacherId', 'name', 'section', 'term']) &&
+        incoming().name is string && incoming().name.size() <= 100;
+      allow update: if isVerified() && isOwner(existing()) && isOwner(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasAny(['name', 'section', 'term', 'studentCount', 'avgGrade']);
+      allow delete: if isVerified() && isOwner(existing());
+    }
+
+    // Students
+    match /classes/{classId}/students/{studentId} {
+      allow read, write: if isVerified() && get(/databases/$(database)/documents/classes/$(classId)).data.teacherId == request.auth.uid;
+    }
+
+    // Rubrics
+    match /rubrics/{rubricId} {
+      allow get: if isVerified() && isOwner(existing());
+      allow list: if isVerified() && resource.data.teacherId == request.auth.uid;
+      allow create: if isVerified() && isOwner(incoming()) &&
+        incoming().keys().hasAll(['teacherId', 'name', 'criteria']) &&
+        incoming().criteria is list && incoming().criteria.size() <= 50;
+      allow update: if isVerified() && isOwner(existing()) && isOwner(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'criteria', 'gradeScale']);
+      allow delete: if isVerified() && isOwner(existing());
+    }
+
+    // Evaluations
+    match /evaluations/{evaluationId} {
+      allow get: if isVerified() && isOwner(existing());
+      allow list: if isVerified() && resource.data.teacherId == request.auth.uid;
+      allow create: if isVerified() && isOwner(incoming()) && 
+        exists(/databases/$(database)/documents/classes/$(incoming().classId));
+      allow update: if isVerified() && isOwner(existing()) && isOwner(incoming()) &&
+        (existing().status != 'Completed' || incoming().diff(existing()).affectedKeys().hasOnly(['stats']));
+      allow delete: if isVerified() && isOwner(existing());
+    }
+
+    // Submissions
+    match /evaluations/{evaluationId}/submissions/{submissionId} {
+      allow read, write: if isVerified() && get(/databases/$(database)/documents/evaluations/$(evaluationId)).data.teacherId == request.auth.uid;
+    }
+  }
+}
